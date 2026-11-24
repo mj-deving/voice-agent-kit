@@ -1,8 +1,8 @@
 # voice-agent-kit
 
-Ein Lern-Kit für deutsche Telefon-Voice-Agenten und ein schlanker Referenz-Agent, an dem jede Regel des Kits als grüner Test greift.
+Ein Lern-Kit für deutsche Telefon-Voice-Agenten und ein schlanker Referenz-Agent, an dem 32 der 44 Gotchas des Kits als Test mit Gegenprobe greifen.
 
-Das Kit ist aus dem Bau eines eigenen deutschen Telefon-Agenten auf [Vapi](https://vapi.ai) entstanden: drei Wochen, mehrere Hundert Test- und Live-Calls, 76 dokumentierte Fehler. Was davon übertragbar ist, steht hier als Regeln, Defaults und 44 Gotchas, jeweils mit Ursache und Wächter-Idee. Der Referenz-Agent ist ein deutscher Anrufbeantworter: Er nimmt Name, Anliegen, Rückrufnummer und Dringlichkeit auf und leitet die Nachricht per Webhook oder Mail weiter.
+Das Kit ist aus dem Bau eines eigenen deutschen Telefon-Agenten auf [Vapi](https://vapi.ai) entstanden: drei Wochen, mehrere Hundert Test- und Live-Calls, 76 dokumentierte Fehler. Was davon übertragbar ist, steht hier als Regeln, Defaults und 44 Gotchas (dokumentierte Fehler), jeweils mit Ursache und Wächter-Idee, also dem Test, der den Rückfall fangen würde. Die Rohdaten der eigenen Messungen liegen nicht im Repo; Werte, die nur auf ihnen beruhen, tragen die Belegstufe MED oder LOW. Der Referenz-Agent ist ein deutscher Anrufbeantworter: Er nimmt Name, Anliegen, Rückrufnummer und Dringlichkeit auf und leitet die Nachricht per Webhook weiter. Ein Mail-Ausgang liegt als Baustein bei.
 
 **Die eine Regel, aus der alles folgt:** Zustand und Ablauf gehören in den Server, die Sprechweise in den Prompt. Ein Prompt ist eine Wahrscheinlichkeit. Was garantiert, gezählt oder geprüft sein muss, gehört in Code. Begründung und Quellen: [kit/regeln.md](kit/regeln.md).
 
@@ -14,7 +14,7 @@ Das Kit ist aus dem Bau eines eigenen deutschen Telefon-Agenten auf [Vapi](https
 | Stellschrauben | [kit/stellschrauben.md](kit/stellschrauben.md) | Defaults für Modell, Endpointing, Barge-in, Stimme, Transcriber, Prompt-Budget, Dauer, Stille, je mit Quelle und dem, was ihr selbst messen müsst |
 | Gotchas | [kit/gotchas.md](kit/gotchas.md) | 44 Fehler mit Symptom, Ursache, Regel, Wächter-Idee, Geltung (neutral oder Vapi) und Test |
 | Replay | [kit/replay.md](kit/replay.md) | Wie eine Prompt-Änderung offline gegen echten Gesprächskontext gemessen wird, mit Kontrollarm, Wilson-Spannen und Kostendeckel |
-| Szenarien | [kit/szenarien.json](kit/szenarien.json) | Acht synthetische Testanrufe, je eine Fehlerklasse |
+| Szenarien | [kit/szenarien.json](kit/szenarien.json) | Acht synthetische Testanrufe, je eine Fehlerklasse, als Daten für eigene Simulationen; die Tests prüfen nur ihre Struktur |
 | Einsatz | [kit/einsatz.md](kit/einsatz.md) | Prüfpunkte für den Betrieb an einer Telefonanlage: Anbindung, Kosten, DSGVO |
 | Referenz-Agent | [agent/](agent/) | Server, Assistant-Config als Code, Replay-Werkzeug, Tests |
 
@@ -28,11 +28,35 @@ bun test
 
 Das prüft den Agenten (Ablauf, Endpointing, Config, Weiterleitung, Server, Messung, Replay) und das Kit selbst: dass jede Gotcha mit Testangabe auf einen echten Test zeigt, dass jeder dieser Tests eine Gegenprobe hat und dass dieses README jede Gotcha-ID nennt.
 
-Den Server lokal starten:
+Den Server lokal starten und prüfen. Das Secret einmal erzeugen und aufheben, denselben Wert hinterlegt ihr später bei Vapi:
 
 ```bash
-WEBHOOK_SECRET=$(openssl rand -hex 24) bun agent/src/main.ts
+export WEBHOOK_SECRET=$(openssl rand -hex 24)
 ```
+
+```bash
+bun agent/src/main.ts
+```
+
+```bash
+curl -s localhost:3000/health
+```
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:3000/webhook -H "x-webhook-secret: $WEBHOOK_SECRET" -d '{"message":{"type":"status-update"}}'
+```
+
+`/health` antwortet mit 200, der Webhook mit dem richtigen Secret ebenfalls, ohne Secret mit 401.
+
+## Begriffe
+
+| Begriff | Bedeutung |
+|---|---|
+| Endpointing | Die Entscheidung, wann die Person fertig gesprochen hat und der Agent antworten darf |
+| Barge-in | Die Person spricht, während der Agent noch redet; der Agent hört dann auf oder nicht |
+| Live-Control-URL | Eine URL je laufendem Call, über die der Server den Agenten stumm schalten oder auflegen kann |
+| Gegenprobe | Teil eines Tests: dieselbe Prüfung gegen eine nachgebaute alte, fehlerhafte Variante, die rot werden muss |
+| Wilson-Spanne | Ein 95-%-Vertrauensbereich für eine Trefferquote, der auch bei kleinen Stichproben (10 Läufe) hält |
 
 ## Wie der Agent arbeitet
 
@@ -44,9 +68,11 @@ Anrufer ──► Vapi (Transcriber → Modell → Stimme) ──► Webhook-Ser
 
 - Das Modell hat genau ein Tool, `speichern(feld, wert)`. Der Server prüft den Wert, legt ihn im Gesprächsstand ab und antwortet mit der nächsten Anweisung: welche Frage jetzt dran ist, welche danach offen sind, oder der feste Abschiedssatz. Das steht in [agent/src/ablauf.ts](agent/src/ablauf.ts).
 
-- Das Modell kann nicht auflegen. Der Server legt über die Live-Control-URL auf, sobald alle vier Felder da sind und die letzte Äußerung des Agenten der Abschiedssatz war. Die Prüfung ist zustandslos und läuft bei jedem Update neu (G5, G19, G28).
+- Das Modell kann nicht auflegen. Der Server legt über die Live-Control-URL auf, sobald alle vier Felder da sind und der Abschiedssatz des Agenten die letzte Äußerung im Gespräch ist, höchstens gefolgt von einem kurzen Gruß wie „Tschüss“. Sagt die Person danach noch etwas anderes, bleibt die Leitung offen. Die Prüfung ist zustandslos und läuft bei jedem Update neu (G5, G19, G28).
 
 - Die Wartezeit bis zur Antwort entscheidet der Server je Antworttyp: kurz nach einer Faktenantwort, lang nach „ähm“ oder einem offenen „und“. Siehe [agent/src/endpointing.ts](agent/src/endpointing.ts).
+
+- Nennt die Person einen Notfall (Gas, Feuer, Verletzte), verweist der Agent sofort auf die 112 und nimmt das Anliegen weiter auf. Die Erkennung ist eine Wortliste, kein Klassifikator.
 
 - Nach dem Gespräch geht die Nachricht an alle Ausgänge. Fehlt ein Feld, steht das in der Nachricht, damit niemand eine halbe Nachricht für vollständig hält. Siehe [agent/src/weiterleitung.ts](agent/src/weiterleitung.ts).
 
@@ -58,18 +84,22 @@ Umgebungsvariablen des Servers:
 |---|---|---|
 | `WEBHOOK_SECRET` | ja, mindestens 16 Zeichen | Erwarteter Wert im Header `x-webhook-secret`. Ohne gültiges Secret startet der Server nicht (G22). |
 | `PORT` | nein, Default 3000 | Port des Servers |
-| `WEITERLEITUNG_URL` | nein | Ziel für die fertige Nachricht als JSON-POST (Ticket-System, Chat-Webhook, eigener Dienst) |
-| `CONTROL_TOKEN` | wenn Control-Auth an ist | Bearer-Token für die Live-Control-URL |
+| `WEITERLEITUNG_URL` | praktisch ja | Ziel für die fertige Nachricht als JSON-POST (Ticket-System, Chat-Webhook, eigener Dienst). Fehlt sie, startet der Server mit einer Warnung, und Nachrichten gehen verloren. |
+| `CONTROL_TOKEN` | ja, sonst legt der Server nie auf | Bearer-Token für die Live-Control-URL. Die Config schaltet die Authentifizierung dort immer ein. Welcher Vapi-Schlüssel hier gilt, steht in der Vapi-Doku zu Call Control; im Repo ist das **nicht belegt**. |
 
 Die Assistant-Config entsteht aus Code, nicht im Dashboard:
 
+1. Bei Vapi eine Server-Credential anlegen, die den Header `x-webhook-secret` mit eurem `WEBHOOK_SECRET` setzt, und ihre ID notieren.
+
+2. Den Body erzeugen:
+
 ```bash
-bun agent/scripts/assistant-json.ts --firma "Muster GmbH" --server-url https://example.org/webhook --credential-id <id>
+bun agent/scripts/assistant-json.ts --firma "Muster GmbH" --server-url https://example.org/webhook --credential-id <id> > assistant.json
 ```
 
-Die Ausgabe ist der Body für die Assistant-API von Vapi. Die Credential-ID zeigt auf eine bei Vapi hinterlegte Server-Credential, die den Header `x-webhook-secret` setzt. Feldnamen und Defaults vor dem Anlegen gegen die aktuelle API-Referenz prüfen.
+3. `assistant.json` an die Assistant-API von Vapi schicken (`POST /assistant`, Bearer-Token im Header) und der Nummer zuordnen. Feldnamen und Defaults vorher gegen die aktuelle API-Referenz prüfen.
 
-**Mail statt Webhook:** `mailAusgang(transport, an, von)` in [agent/src/weiterleitung.ts](agent/src/weiterleitung.ts) nimmt einen beliebigen Transport (SMTP-Client, Mail-API) als Funktion. Der Betreff wird von Zeilenumbrüchen befreit (G32). Eingebaut wird er in [agent/src/main.ts](agent/src/main.ts) neben dem Webhook-Ausgang.
+**Mail statt oder neben Webhook:** `mailAusgang(transport, an, von)` in [agent/src/weiterleitung.ts](agent/src/weiterleitung.ts) nimmt einen beliebigen Transport (SMTP-Client, Mail-API) als Funktion und ist getestet. Verdrahtet ist er nicht, weil das Repo keine Abhängigkeit mitbringt: In [agent/src/main.ts](agent/src/main.ts) neben dem Webhook-Ausgang in die Liste `ausgaenge` hängen. Der Betreff wird von Zeilenumbrüchen befreit (G32).
 
 ## SIP und Telefonanlage
 
@@ -86,7 +116,15 @@ OPENAI_BASE_URL=https://api.openai.com/v1 OPENAI_API_KEY=... bun agent/scripts/r
   alt.txt neu.txt
 ```
 
-Der erste Prompt ist immer die Kontrolle. Ein Arm heißt nur besser, wenn die 95-%-Spannen sich nicht überlappen. Liegt die Kostenschätzung über `--max-usd`, startet nichts. Verfahren und ein echtes Beispiel: [kit/replay.md](kit/replay.md).
+- `verlauf.json` ist das Transkript eines echten Calls als Liste `[{ "role": "assistant" | "user", "content": "…" }]`. `--bis` schneidet es nach der ersten Anrufer-Äußerung, die auf den Regex passt.
+
+- `alt.txt` und `neu.txt` sind System-Prompts als Text. Der erste ist immer die Kontrolle.
+
+- Ein Arm heißt nur besser, wenn die 95-%-Spannen sich nicht überlappen.
+
+- Liegt die Kostenschätzung über `--max-usd`, startet nichts. Die Schätzung rechnet ohne Wiederholungen bei 429 oder 5xx; bis zu vier Versuche je Aufruf sind möglich, also den Deckel mit Puffer setzen.
+
+Verfahren und ein Beispiel aus dem Ursprungsprojekt: [kit/replay.md](kit/replay.md). Dessen Verlauf und Prompts liegen nicht im Repo.
 
 ## Gotchas nach Klasse
 

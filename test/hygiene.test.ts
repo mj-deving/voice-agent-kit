@@ -7,8 +7,12 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "..");
 const SELBST = "test/hygiene.test.ts";
-const dateien = Bun.spawnSync(["git", "ls-files", "-co", "--exclude-standard"], { cwd: ROOT })
-  .stdout.toString().split("\n").filter(Boolean).filter((f) => existsSync(join(ROOT, f)));
+// Mit git: alle verfolgten und neuen Dateien. Ohne git (ZIP-Download): Dateibaum ohne node_modules.
+const git = Bun.spawnSync(["git", "ls-files", "-co", "--exclude-standard"], { cwd: ROOT });
+const dateien = (git.success
+  ? git.stdout.toString().split("\n").filter(Boolean)
+  : [...new Bun.Glob("**/*").scanSync({ cwd: ROOT, dot: true })].filter((f) => !/^(\.git|node_modules)\//.test(f))
+).filter((f) => existsSync(join(ROOT, f)));
 const lies = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 // Generische Muster gelten für jeden. Die Sperrliste mit Namen liegt bewusst

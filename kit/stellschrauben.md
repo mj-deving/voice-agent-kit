@@ -2,7 +2,7 @@
 
 Je Stellschraube: der Wert im Referenz-Agenten (`agent/src/assistant.ts`, `agent/src/endpointing.ts`), was die Praxis sagt, die Quelle, die Belegstufe und was ihr selbst messen müsst. Feldnamen folgen Vapi; die Größen gibt es bei Retell, ElevenLabs Agents, LiveKit und Pipecat unter anderen Namen.
 
-Eine deutsche Abstimmung dieser Werte ist nirgends veröffentlicht. Alle Wartezeiten unten sind an einem anderen deutschen Telefon-Agenten gemessen und für andere Gespräche ein Startpunkt.
+Eine deutsche Abstimmung dieser Werte ist nirgends veröffentlicht. Alle Wartezeiten unten sind an einem anderen deutschen Telefon-Agenten gemessen und für andere Gespräche ein Startpunkt. „Eigene Messung“ heißt: Messung im Ursprungsprojekt, Rohdaten nicht in diesem Repo; deshalb höchstens MED.
 
 | Gruppe | Stellschraube | Default hier | Praxis | Quelle | Stufe | Selbst messen |
 |---|---|---|---|---|---|---|

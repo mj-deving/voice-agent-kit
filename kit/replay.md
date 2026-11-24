@@ -8,7 +8,7 @@ Werkzeug: `agent/scripts/replay.ts` (Kern in `agent/src/replay.ts`, Tests in `ag
 
 Nimm das Transkript eines echten Calls, in dem der Fehler passiert ist. Schneide den Verlauf bis einschließlich der Anrufer-Äußerung, nach der der Agent falsch reagiert hat (`--bis` als Regex). Ohne Treffer bricht das Werkzeug ab, statt den ganzen Verlauf zu nehmen.
 
-Der Kontext muss dem entsprechen, was das Modell live sah: dieselben Rollen, dieselben Tool-Ergebnisse, derselbe System-Prompt-Rahmen. Ein Replay ohne Tool-Ergebnisse misst ein anderes System (Gotcha G34).
+Der Kontext muss dem entsprechen, was das Modell live sah: dieselben Rollen, dieselben Tool-Ergebnisse, derselbe System-Prompt-Rahmen. Ein Replay ohne Tool-Ergebnisse misst ein anderes System. Das Werkzeug hier kennt nur die Rollen `system`, `user` und `assistant`; Tool-Ergebnisse gehören deshalb als Text in die Agenten-Nachricht davor, so wie das Modell sie gesehen hat.
 
 ## 2. Ziehungen
 
@@ -22,11 +22,11 @@ Der erste Prompt ist immer der unveränderte Live-Prompt. Ohne Kontrollarm ist e
 
 ## 4. Spannen
 
-Ein Arm heißt nur dann besser oder schlechter, wenn die 95-%-Spannen (Wilson) der Trefferquoten sich nicht überlappen und jeder Arm mindestens zwei gültige Läufe hat. Sonst lautet das Urteil „nicht unterscheidbar“ (G24). Für Latenz-Unterschiede unter 0,3 s braucht es mindestens sechs Calls je Arm.
+Ein Arm heißt nur dann besser oder schlechter, wenn die 95-%-Spannen (Wilson) der Trefferquoten sich nicht überlappen und jeder Arm mindestens zwei gültige Läufe hat. Sonst lautet das Urteil „nicht unterscheidbar“ (G24). Für Latenz-Unterschiede unter 0,3 s braucht es nach unserer Erfahrung mindestens sechs Calls je Arm (Faustregel, nicht im Code geprüft).
 
 ## Kosten
 
-Jeder Lauf braucht `--max-usd` und eine Schätzung je Aufruf (`--usd-pro-aufruf`). Liegt die Schätzung über dem Deckel, startet nichts (G23).
+Jeder Lauf braucht `--max-usd` und eine Schätzung je Aufruf (`--usd-pro-aufruf`). Liegt die Schätzung über dem Deckel, startet nichts (G23). Wiederholungen bei 429 oder 5xx (bis zu vier Versuche je Aufruf) sind in der Schätzung nicht enthalten; den Deckel mit Puffer setzen.
 
 ## Beispiel aus dem Ursprungsprojekt
 
@@ -43,6 +43,6 @@ Erst der letzte Arm ging live. Der Referenz-Agent setzt dieselbe Regel zusätzli
 
 ## Andere Messungen
 
-- **Turn-Taking:** Einwürfe aus der Stereo-Aufnahme am Turn-Wechsel zählen, nicht aus dem Unterbrechungs-Zähler der Plattform (G17). Ein Gate wird rot bei jedem Einwurf (G25).
+- **Turn-Taking:** Einwürfe aus der Stereo-Aufnahme am Turn-Wechsel zählen, nicht aus dem Unterbrechungs-Zähler der Plattform (G17). Der Referenz-Agent nimmt im Betrieb nicht auf; für Messungen die Aufnahme nur in Testcalls mit eingewilligten Testpersonen einschalten. Ein Gate wird rot bei jedem Einwurf (G25).
 - **Config-Arme:** Jeden Call gegen die Soll-Einstellung lesen, bevor er zählt (G26).
 - **Reihenfolge:** billige Schicht zuerst. Offline-Replay und Text-Simulation, dann Cent-Proben, große Läufe genau einmal auf der eingefrorenen Konfiguration.

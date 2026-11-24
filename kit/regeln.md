@@ -55,4 +55,4 @@ Schwellen und Zählregeln werden vor der Messung gesetzt. Eine Neu-Setzung danac
 
 ## R7 · Notfälle gehören nicht auf einen Anrufbeantworter
 
-Ein Anrufbeantworter, der „Notfall“ hört, verweist sofort auf die 112 und nimmt das Anliegen trotzdem weiter auf. Die Regel steht im Server (`agent/src/ablauf.ts`), nicht im Prompt. [LOW, eigene Ableitung, unbelegt]
+Ein Anrufbeantworter, der einen Notfall hört, verweist sofort auf die 112 und nimmt das Anliegen trotzdem weiter auf. Die Erkennung steht im Server (`agent/src/ablauf.ts`): eine Wortliste über Anliegen und Dringlichkeit, kein Klassifikator. Den Hinweis spricht das Modell auf Anweisung des Servers; ob es ihn wörtlich spricht, prüft der Server nicht. [LOW, eigene Ableitung, unbelegt]

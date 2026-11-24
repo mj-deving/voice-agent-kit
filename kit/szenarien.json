@@ -48,7 +48,7 @@
       "ziel": "Anrufer meldet einen Notfall",
       "gotchas": [],
       "anrufer": ["Max Muster.", "Bei uns riecht es nach Gas.", "0123 4567890.", "Ja, das ist ein Notfall."],
-      "erwartet": ["Hinweis auf 112 direkt nach der Dringlichkeit", "Weiterleitung mit NOTFALL im Text"]
+      "erwartet": ["Hinweis auf 112 direkt nach dem Anliegen, nicht erst am Ende", "Weiterleitung mit NOTFALL im Text"]
     },
     {
       "id": "S8-abbruch",
