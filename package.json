@@ -1,0 +1,9 @@
+{
+  "name": "voice-agent-kit",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "start": "bun agent/src/main.ts"
+  }
+}
