@@ -169,6 +169,7 @@ Das Ursprungsprojekt enthält 76 belegte Fehler und Praxiszeilen, ist aber nicht
 - 2026-11-24 · refined: Eine Einsatzinstanz des Anrufbeantworters ist als Pilot geplant. ISC-34 bis 36 sind damit Abnahmekriterien des Pilots (Meilenstein pilot), keine Ideen. Die Instanz selbst entsteht getrennt und privat, nicht in diesem Repo; das Kit bleibt generisch. Meilenstein v1 ist ISC-1 bis 33.
 
 - 2026-11-24 · Veröffentlichungsvorbereitung: Lizenz MIT. Das ISA wird bereinigt mitveröffentlicht, weil es die Arbeitsweise belegt. Die Historie bleibt erhalten; eine Export-Kopie schreibt nur die Autor-Mail auf die GitHub-noreply-Adresse um. Das Arbeits-Repo bleibt unverändert und lokal.
+- 2026-11-24 · Die Art des Ursprungsprojekts bleibt ungenannt: Es heißt überall nur „ein eigener deutscher Telefon-Agent“. Das Wort steht auf der Sperrliste außerhalb des Repos, damit ISC-4 einen Rückfall fängt.
 
 ## Articulation Log
 
