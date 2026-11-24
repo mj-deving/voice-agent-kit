@@ -158,3 +158,7 @@ Alle 44 stehen mit Ursache und Regel in [kit/gotchas.md](kit/gotchas.md). G1 bis
 ## Hygiene
 
 `test/hygiene.test.ts` prüft, dass keine privaten Pfade oder IDs im Repo stehen, dass der Server-Code nur eigene Dateien und `node:`-Module importiert und dass jedes Skript mit bezahltem Aufruf über den Kostendeckel läuft. Eine zusätzliche Wortliste mit Namen, die nicht ins Repo gehören, liest der Test aus `$VOICE_KIT_SPERRLISTE` oder `~/.config/voice-agent-kit/sperrliste.txt`, also bewusst von außerhalb des Repos.
+
+## Lizenz
+
+MIT, siehe [LICENSE](LICENSE).
