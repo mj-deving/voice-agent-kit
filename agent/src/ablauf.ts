@@ -31,7 +31,7 @@ const WIEDERHOLUNG = /(wiederholen|wie bitte|nicht verstanden|was war die frage|
 export const istWiederholungsbitte = (text: string) => WIEDERHOLUNG.test(text);
 
 // ponytail: Wortliste, kein Klassifikator; deckt die häufigen Fälle, nicht jede Formulierung.
-const NOTFALL_WORTE = /notfall|lebensgefahr|brennt|feuer|rauch|nach gas|gasgeruch|verletzt|bewusstlos|unfall/i;
+const NOTFALL_WORTE = /notfall|lebensgefahr|brennt|feuer|rauch|(^|[^\p{L}])gas(?!t)|verletzt|bewusstlos|unfall/iu;
 
 type Pruefung ={ ok: true; wert: string } | { ok: false; grund: string };
 const STEUERZEICHEN = /[\u0000-\u001f\u007f]/g;

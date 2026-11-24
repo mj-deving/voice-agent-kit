@@ -98,6 +98,20 @@ describe("Server", () => {
     expect(beenden("http://control", undefined, fehler)).rejects.toThrow("mute-assistant 500");
   });
 
+  test("Auflegen: ein fehlgeschlagener Versuch wird beim nächsten Update wiederholt", async () => {
+    let versuche = 0;
+    const f = (async () => new Response("", { status: ++versuche <= 1 ? 500 : 200 })) as unknown as typeof fetch;
+    const logs: string[] = [];
+    const handle = erstelleServer({ secret: SECRET, ausgaenge: [], fetch: f, log: (s) => logs.push(s) });
+    const call = { id: "c9", monitor: { controlUrl: "http://control/c9" } };
+    await handle(anfrage({ type: "tool-calls", call, toolCallList: [tool("a", "name", "Erika Beispiel"), tool("b", "anliegen", "Wartung"), tool("c", "rueckruf", "0123 4567890"), tool("d", "dringlichkeit", "morgen reicht")] }));
+    const update = anfrage({ type: "conversation-update", call, messages: [{ role: "bot", message: ABSCHLUSS }] });
+    expect((await handle(update)).status).toBe(200);
+    expect(logs.join()).toContain("Auflegen fehlgeschlagen");
+    await handle(anfrage({ type: "conversation-update", call, messages: [{ role: "bot", message: ABSCHLUSS }] }));
+    expect(versuche).toBe(3); // 1 fehlgeschlagenes mute, dann mute + end-call
+  });
+
   test("unbekanntes Tool-Feld wird abgelehnt, nicht gespeichert", async () => {
     const { handle, gesendet } = aufbau();
     const r = await (await handle(anfrage({ type: "tool-calls", call: { id: "c4" }, toolCallList: [tool("t1", "iban", "DE00")] }))).json();

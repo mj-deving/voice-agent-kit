@@ -34,8 +34,10 @@ Den Server lokal starten und prüfen. Das Secret einmal erzeugen und aufheben, d
 export WEBHOOK_SECRET=$(openssl rand -hex 24)
 ```
 
+Den Server im Hintergrund desselben Terminals starten, damit die Variable für die Proben gesetzt bleibt (mit `kill %1` wieder beenden):
+
 ```bash
-bun agent/src/main.ts
+bun agent/src/main.ts &
 ```
 
 ```bash
@@ -56,6 +58,8 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST localhost:3000/webhook -H "x-we
 | Barge-in | Die Person spricht, während der Agent noch redet; der Agent hört dann auf oder nicht |
 | Live-Control-URL | Eine URL je laufendem Call, über die der Server den Agenten stumm schalten oder auflegen kann |
 | Gegenprobe | Teil eines Tests: dieselbe Prüfung gegen eine nachgebaute alte, fehlerhafte Variante, die rot werden muss |
+| Belegstufe | HIGH: Primärquelle mit expliziter Aussage. MED: indirekt, Einzelquelle oder eigene Messung. LOW: Herstellerblog oder eigene Ableitung |
+| Arm, Kontrollarm | Eine Variante in einem Vergleich. Der Kontrollarm ist die unveränderte Fassung, gegen die jede Änderung gemessen wird |
 | Wilson-Spanne | Ein 95-%-Vertrauensbereich für eine Trefferquote, der auch bei kleinen Stichproben (10 Läufe) hält |
 
 ## Wie der Agent arbeitet
@@ -70,9 +74,9 @@ Anrufer ──► Vapi (Transcriber → Modell → Stimme) ──► Webhook-Ser
 
 - Das Modell kann nicht auflegen. Der Server legt über die Live-Control-URL auf, sobald alle vier Felder da sind und der Abschiedssatz des Agenten die letzte Äußerung im Gespräch ist, höchstens gefolgt von einem kurzen Gruß wie „Tschüss“. Sagt die Person danach noch etwas anderes, bleibt die Leitung offen. Die Prüfung ist zustandslos und läuft bei jedem Update neu (G5, G19, G28).
 
-- Die Wartezeit bis zur Antwort entscheidet der Server je Antworttyp: kurz nach einer Faktenantwort, lang nach „ähm“ oder einem offenen „und“. Siehe [agent/src/endpointing.ts](agent/src/endpointing.ts).
+- Die Wartezeit bis zur Antwort entscheidet der Server je Antworttyp: kurz nach einer Faktenantwort, lang nach „ähm“ oder einem offenen „und“. Siehe [agent/src/endpointing.ts](agent/src/endpointing.ts). Dass Vapi dafür `call.endpointing.request` an die Server-URL schickt, wenn `custom-endpointing-model` gesetzt ist, ist im Ursprungsprojekt live so gelaufen; in diesem Repo ist es nur offline getestet.
 
-- Nennt die Person einen Notfall (Gas, Feuer, Verletzte), verweist der Agent sofort auf die 112 und nimmt das Anliegen weiter auf. Die Erkennung ist eine Wortliste, kein Klassifikator.
+- Nennt die Person einen Notfall (Gas, Feuer, Verletzte), verweist der Agent direkt nach dem Speichern dieser Angabe auf die 112 und nimmt das Anliegen weiter auf. Die Erkennung ist eine Wortliste, kein Klassifikator.
 
 - Nach dem Gespräch geht die Nachricht an alle Ausgänge. Fehlt ein Feld, steht das in der Nachricht, damit niemand eine halbe Nachricht für vollständig hält. Siehe [agent/src/weiterleitung.ts](agent/src/weiterleitung.ts).
 
@@ -89,7 +93,9 @@ Umgebungsvariablen des Servers:
 
 Die Assistant-Config entsteht aus Code, nicht im Dashboard:
 
-1. Bei Vapi eine Server-Credential anlegen, die den Header `x-webhook-secret` mit eurem `WEBHOOK_SECRET` setzt, und ihre ID notieren.
+0. Den Server unter einer öffentlichen HTTPS-Adresse erreichbar machen: auf einem eigenen Host oder lokal über einen Tunnel (etwa Cloudflare Tunnel oder ngrok). Vapi erreicht `localhost` nicht.
+
+1. Bei Vapi eine Server-Credential anlegen, die den Header `x-webhook-secret` mit eurem `WEBHOOK_SECRET` setzt, und ihre ID notieren. Wie das geht, steht in der Vapi-Doku unter Server Authentication.
 
 2. Den Body erzeugen:
 

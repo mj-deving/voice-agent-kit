@@ -61,7 +61,13 @@ export function erstelleServer(d: Deps) {
         const url = msg.call?.monitor?.controlUrl;
         if (url && !beendet.has(callId) && auflegenErlaubt(stand(callId), turns(msg.messages))) {
           beendet.add(callId);
-          await beenden(url, d.controlToken, d.fetch);
+          try {
+            await beenden(url, d.controlToken, d.fetch);
+          } catch (e) {
+            // Fehlgeschlagen (kein Token, 5xx): Sperre lösen, damit das nächste Update es erneut versucht.
+            beendet.delete(callId);
+            log(`Auflegen fehlgeschlagen für ${callId}: ${(e as Error).message}`);
+          }
         }
         return { ok: true };
       }
