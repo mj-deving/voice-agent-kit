@@ -29,10 +29,11 @@ describe("Assistant-Config", () => {
   });
 
   test("G15 der TTS-Cache ist aus", () => {
-    expect(a.voice.cachingEnabled).toBe(false);
-    // gegenprobe: ohne das Feld gilt der Default der Plattform, und der ist an
+    const cacheAus = (v: { cachingEnabled?: boolean }) => v.cachingEnabled === false;
+    expect(cacheAus(a.voice)).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen eine Config ohne das Feld (Plattform-Default: an) schlägt an
     const { cachingEnabled, ...ohne } = a.voice;
-    expect("cachingEnabled" in ohne).toBe(false);
+    expect(cacheAus(ohne)).toBe(false);
   });
 
   test("G16 Füllsätze ohne Okay und ohne Dank", () => {
@@ -45,11 +46,12 @@ describe("Assistant-Config", () => {
   });
 
   test("G17 Barge-in: ein Hörersignal stoppt den Agenten nicht, deutsche Phrasenlisten", () => {
-    expect(a.stopSpeakingPlan.numWords).toBe(2);
-    expect(a.stopSpeakingPlan.acknowledgementPhrases).toContain("mhm");
-    expect(a.stopSpeakingPlan.interruptionPhrases).toContain("moment");
-    // gegenprobe: mit numWords 0 bricht jedes „mhm“ den Agenten ab
-    expect({ ...a.stopSpeakingPlan, numWords: 0 }.numWords).not.toBe(2);
+    type Plan = { numWords?: number; acknowledgementPhrases?: string[]; interruptionPhrases?: string[] };
+    const bargeInOk = (p: Plan) => p.numWords === 2 && !!p.acknowledgementPhrases?.includes("mhm") && !!p.interruptionPhrases?.includes("moment");
+    expect(bargeInOk(a.stopSpeakingPlan)).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen numWords 0 (jedes „mhm“ bricht ab) und gegen Plattform-Listen ohne Deutsch
+    expect(bargeInOk({ ...a.stopSpeakingPlan, numWords: 0 })).toBe(false);
+    expect(bargeInOk({ numWords: 2 })).toBe(false);
   });
 
   test("G18 Defaults, die Daten verarbeiten oder Kosten treiben, sind explizit gesetzt", () => {
@@ -65,11 +67,16 @@ describe("Assistant-Config", () => {
   });
 
   test("G19 das Modell hat kein endCall-Tool, aufgelegt wird vom Server", () => {
-    expect(a.model.tools.some((t) => (t as { type: string }).type === "endCall")).toBe(false);
+    const keinEndCall = (tools: unknown[]) => !tools.some((t) => (t as { type: string }).type === "endCall");
+    expect(keinEndCall(a.model.tools)).toBe(true);
     expect(a.monitorPlan.controlEnabled).toBe(true);
     expect(a.monitorPlan.controlAuthenticationEnabled).toBe(true);
-    // gegenprobe: ein Modell mit endCall kann vor dem letzten Feld auflegen, das kein Server-Check verhindert
-    const mitEndCall = [...a.model.tools, { type: "endCall" }];
-    expect(mitEndCall.some((t) => (t as { type: string }).type === "endCall")).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen ein Tool-Array mit endCall schlägt an
+    expect(keinEndCall([...a.model.tools, { type: "endCall" }])).toBe(false);
+  });
+
+  test("Endpointing: die Wartezeit kommt vom Server", () => {
+    // Mit diesem Provider schickt Vapi call.endpointing.request an die Server-URL des Assistenten.
+    expect(a.startSpeakingPlan.smartEndpointingPlan.provider).toBe("custom-endpointing-model");
   });
 });

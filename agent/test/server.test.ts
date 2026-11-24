@@ -80,9 +80,9 @@ describe("Server", () => {
     const { handle } = aufbau();
     expect((await handle(anfrage({ type: "x" }, "falsch"))).status).toBe(401);
     expect((await handle(new Request("http://x/webhook", { method: "POST", body: "{}" }))).status).toBe(401);
-    // gegenprobe: ein „optionales“ Secret (leer heißt: nicht prüfen) wäre offen
-    const failOpen = (soll: string | undefined, got: string | null) => !soll || got === soll;
-    expect(failOpen(undefined, null)).toBe(true);
+    // gegenprobe: dieselbe Prüfung „Start ohne Secret wirft“ gegen eine fail-open-Konfiguration (leer heißt: nicht prüfen) schlägt an
+    const failOpen = (env: Record<string, string | undefined>) => ({ secret: env.WEBHOOK_SECRET ?? "" });
+    expect(() => failOpen({})).not.toThrow();
   });
 
   test("G28 erst stumm schalten, dann auflegen, mit Token", async () => {

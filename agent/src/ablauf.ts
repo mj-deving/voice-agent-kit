@@ -13,9 +13,12 @@ export const FELDER: { feld: Feld; frage: string }[] = [
 
 /** Der feste Abschiedssatz. Aufgelegt wird erst, wenn der Agent ihn gesprochen hat (G5). */
 export const ABSCHLUSS = "Danke, ich habe alles notiert und gebe es weiter. Sie werden zurückgerufen. Auf Wiederhören!";
-export const NOTFALL = "Sag zuerst: Bei einem Notfall wählen Sie bitte sofort die 112. Dieser Anrufbeantworter wird nicht laufend abgehört.";
+export const NOTFALL = "Sag zuerst: Bei einem Notfall wählen Sie bitte sofort die eins eins zwei. Dieser Anrufbeantworter wird nicht laufend abgehört.";
 
 const ZIFFERN = ["null", "eins", "zwo", "drei", "vier", "fünf", "sechs", "sieben", "acht", "neun"];
+const ZIFFERWORT: Record<string, string> = { ein: "1", zwei: "2", ...Object.fromEntries(ZIFFERN.map((w, i) => [w, String(i)])) };
+/** Gesprochene Ziffern („null eins zwo …“) in Ziffern wandeln; Transcriber liefern Nummern mal so, mal so. */
+const zuZiffern = (s: string) => s.replace(/\p{L}+/gu, (w) => ZIFFERWORT[w.toLowerCase()] ?? w);
 
 /** G13: Ziffern als Wörter, damit keine Sprach-Pipeline eine Nummer als Betrag oder englisch liest. „+“ wird „plus“. */
 export function ziffernweise(nummer: string): string {
@@ -23,10 +26,14 @@ export function ziffernweise(nummer: string): string {
 }
 
 /** G6: Eine Bitte um Wiederholung ist keine Antwort. */
-const WIEDERHOLUNG = /(wiederholen|noch ?mal|noch einmal|wie bitte|nicht verstanden|was war die frage)/i;
+// Nur Formulierungen einer Bitte. Ein bloßes „noch einmal“ steht auch in echten Anliegen („schon wieder, noch einmal ausgefallen“).
+const WIEDERHOLUNG = /(wiederholen|wie bitte|nicht verstanden|was war die frage|(sagen|fragen) sie (das |die frage )?noch ?(ein)?mal|^noch ?(ein)?mal,? bitte)/i;
 export const istWiederholungsbitte = (text: string) => WIEDERHOLUNG.test(text);
 
-type Pruefung = { ok: true; wert: string } | { ok: false; grund: string };
+// ponytail: Wortliste, kein Klassifikator; deckt die häufigen Fälle, nicht jede Formulierung.
+const NOTFALL_WORTE = /notfall|lebensgefahr|brennt|feuer|rauch|nach gas|gasgeruch|verletzt|bewusstlos|unfall/i;
+
+type Pruefung ={ ok: true; wert: string } | { ok: false; grund: string };
 const STEUERZEICHEN = /[\u0000-\u001f\u007f]/g;
 
 /** Wert für ein Feld prüfen und normalisieren. Der Server nimmt nur, was hier durchkommt. */
@@ -35,12 +42,12 @@ export function pruefeWert(feld: Feld, roh: string): Pruefung {
   if (!wert) return { ok: false, grund: "leer" };
   if (istWiederholungsbitte(wert)) return { ok: false, grund: "wiederholungsbitte" };
   if (feld === "rueckruf") {
-    const nummer = wert.replace(/(?!^\+)[^\d]/g, "");
+    const nummer = zuZiffern(wert).replace(/(?!^\+)[^\d]/g, "");
     const ziffern = nummer.replace("+", "").length;
     return ziffern >= 6 && ziffern <= 15 ? { ok: true, wert: nummer } : { ok: false, grund: "nummer-unvollstaendig" };
   }
   if (feld === "dringlichkeit") {
-    if (/notfall|lebensgefahr|brennt|unfall/i.test(wert)) return { ok: true, wert: "notfall" };
+    if (NOTFALL_WORTE.test(wert)) return { ok: true, wert: "notfall" };
     if (/(nicht|kein)\w* (so )?(dringend|eilig)|nächste|morgen|reicht|egal/i.test(wert)) return { ok: true, wert: "normal" };
     return /dringend|eilig|sofort|heute|schnell|ja/i.test(wert) ? { ok: true, wert: "dringend" } : { ok: true, wert: "normal" };
   }
@@ -60,7 +67,9 @@ export function anweisung(stand: Stand, zuletzt?: { feld: Feld; ergebnis: Pruefu
       return "Die Nummer ist unvollständig. Bitte die Person, die ganze Rückrufnummer noch einmal langsam zu nennen, mit Vorwahl.";
     return `Der Wert war leer. Stelle die Frage noch einmal: ${frage(zuletzt.feld)}`;
   }
-  if (zuletzt?.feld === "dringlichkeit" && stand.dringlichkeit === "notfall") teile.push(NOTFALL);
+  // R7: Notfall-Hinweis, sobald ein Notfall-Wort im Anliegen oder in der Dringlichkeit steht, nicht erst am Ende.
+  const notfallJetzt = (zuletzt?.feld === "anliegen" && NOTFALL_WORTE.test(stand.anliegen ?? "")) || (zuletzt?.feld === "dringlichkeit" && stand.dringlichkeit === "notfall");
+  if (notfallJetzt) teile.push(NOTFALL);
   if (zuletzt?.feld === "rueckruf" && stand.rueckruf) teile.push(`Lies die Nummer genau so zur Bestätigung vor: ${ziffernweise(stand.rueckruf)}. Korrigiert die Person sie, rufe speichern erneut auf.`);
   const rest = offen(stand);
   if (!rest.length) {
@@ -82,8 +91,11 @@ export const anteil = (soll: string, text: string) => {
 };
 
 /** G5: Auflegen ist eine reine Prüfung, bei jedem Update neu gerechnet, ohne gespeicherte Freigabe.
- *  Wahr nur, wenn alle Felder da sind und die letzte Äußerung der Abschiedssatz des Agenten ist. */
+ *  Wahr nur, wenn alle Felder da sind und der Abschiedssatz des Agenten die letzte Äußerung ist,
+ *  höchstens gefolgt von einem kurzen Gruß der Person („Tschüss“). Alles andere nach dem Abschied hält die Leitung offen. */
+const GRUSS = /^(tschüss|tschau|ciao|danke( schön| ihnen)?|auf wiederhören|wiederhören|ok(ay)?|alles klar|bis dann)[\s.,!]*(tschüss|danke|auf wiederhören|wiederhören)?[\s.,!]*$/i;
 export function auflegenErlaubt(stand: Stand, verlauf: Turn[]): boolean {
-  const letzter = verlauf.at(-1);
+  const rest = verlauf.at(-1)?.wer === "anrufer" && GRUSS.test(verlauf.at(-1)!.text.trim()) ? verlauf.slice(0, -1) : verlauf;
+  const letzter = rest.at(-1);
   return offen(stand).length === 0 && letzter?.wer === "agent" && anteil(ABSCHLUSS, letzter.text) >= 0.8;
 }

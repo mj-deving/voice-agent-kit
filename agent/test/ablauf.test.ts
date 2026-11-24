@@ -38,10 +38,17 @@ describe("Ablauf", () => {
     expect(pruefeWert("rueckruf", "0123 4")).toEqual({ ok: false, grund: "nummer-unvollstaendig" });
     expect(pruefeWert("rueckruf", "null eins zwo")).toEqual({ ok: false, grund: "nummer-unvollstaendig" });
     expect(pruefeWert("rueckruf", "+49 123 4567890")).toEqual({ ok: true, wert: "+491234567890" });
+    // gesprochene Ziffern, wie Transcriber sie oft liefern
+    expect(pruefeWert("rueckruf", "Null eins zwei drei, vier fünf sechs sieben acht neun null.")).toEqual({ ok: true, wert: "01234567890" });
     expect(anweisung({}, { feld: "rueckruf", ergebnis: { ok: false, grund: "nummer-unvollstaendig" } })).toContain("unvollständig");
-    // gegenprobe: ohne Prüfung wäre „0123 45“ ein gültiger Wert und das Feld als erledigt markiert
-    const ohnePruefung = (w: string) => w.trim().length > 0;
-    expect(ohnePruefung("0123 4")).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen die alte Variante, die jeden nicht-leeren Wert nahm, lässt „0123 4“ durch
+    const alt = (_f: string, w: string) => ({ ok: true as const, wert: w.trim() });
+    expect(alt("rueckruf", "0123 4").ok).toBe(true);
+    expect(pruefeWert("rueckruf", "0123 4").ok).toBe(false);
+    // gegenprobe 2: die alte Nummernprüfung ohne Wortwandlung lehnte gesprochene Ziffern ab
+    const altNummer = (w: string) => w.replace(/[^\d]/g, "").length >= 6;
+    expect(altNummer("null eins zwei drei vier fünf sechs")).toBe(false);
+    expect(pruefeWert("rueckruf", "null eins zwei drei vier fünf sechs").ok).toBe(true);
   });
 
   test("G5 Auflegen ist zustandslos: nur alle Felder plus gesprochener Abschied als letzte Äußerung", () => {
@@ -55,6 +62,9 @@ describe("Ablauf", () => {
     expect(auflegenErlaubt(voll, [{ wer: "agent", text: "Ist es dringend?" }])).toBe(false);
     // gegenprobe 4: dieselbe Frage zweimal liefert dasselbe Ergebnis, es gibt keine gespeicherte Freigabe
     expect(auflegenErlaubt(voll, mitAbschied)).toBe(auflegenErlaubt(voll, mitAbschied));
+    // ein kurzer Gruß nach dem Abschied hält die Leitung nicht offen
+    expect(auflegenErlaubt(voll, [...mitAbschied, { wer: "anrufer", text: "Tschüss!" }])).toBe(true);
+    expect(auflegenErlaubt(voll, [...mitAbschied, { wer: "anrufer", text: "Danke, auf Wiederhören." }])).toBe(true);
   });
 
   test("G6 eine Wiederholungsbitte ist keine Antwort", () => {
@@ -63,8 +73,14 @@ describe("Ablauf", () => {
     const a = anweisung({ name: "Erika Beispiel" }, { feld: "anliegen", ergebnis: r });
     expect(a).toContain("Worum geht es bei Ihrem Anliegen?");
     expect(a).toContain("ohne Nachfrage");
-    // gegenprobe: eine Prüfung, die nur auf „leer“ schaut, hätte die Bitte als Anliegen gespeichert
-    expect("Können Sie die Frage nochmal wiederholen?".trim().length > 0).toBe(true);
+    expect(pruefeWert("anliegen", "Sagen Sie das noch mal?").ok).toBe(false);
+    // ein „noch einmal“ im echten Anliegen ist keine Bitte
+    expect(pruefeWert("anliegen", "Die Heizung ist noch einmal ausgefallen.").ok).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen die alte Variante, die nur „leer“ ablehnte, speichert die Bitte als Anliegen
+    const alt = (w: string) => (w.trim() ? { ok: true } : { ok: false });
+    expect(alt("Können Sie die Frage nochmal wiederholen?").ok).toBe(true);
+    // gegenprobe 2: das alte, zu breite Muster lehnte ein echtes Anliegen ab
+    expect(/(noch ?mal|noch einmal)/i.test("Die Heizung ist noch einmal ausgefallen.")).toBe(true);
   });
 
   test("rueckruf: Nummer wird ziffernweise zur Bestätigung vorgelesen", () => {
@@ -75,8 +91,12 @@ describe("Ablauf", () => {
   test("G13 Ziffern als Wörter, nie als Zahl", () => {
     expect(ziffernweise("+49 951 20")).toBe("plus vier neun neun fünf eins zwo null");
     expect(ziffernweise("55000")).not.toMatch(/\d/);
-    // gegenprobe: die Zahl als Ziffernfolge an die Stimme gegeben, liest eine Pipeline sie als Betrag oder englisch
-    expect("55000").toMatch(/^\d+$/);
+    // Jeder feste Satz, den der Agent wörtlich spricht, ist ziffernfrei.
+    const gesprochen = [ABSCHLUSS, NOTFALL, ...FELDER.map((f) => f.frage)];
+    const ohneZiffern = (saetze: string[]) => saetze.every((s) => !/\d/.test(s));
+    expect(ohneZiffern(gesprochen)).toBe(true);
+    // gegenprobe: dieselbe Prüfung gegen den alten Notfall-Satz mit „112“ schlägt an
+    expect(ohneZiffern([...gesprochen, "Bei einem Notfall wählen Sie bitte sofort die 112."])).toBe(false);
   });
 
   test("Notfall: Hinweis auf 112 kommt sofort nach der Angabe", () => {
@@ -84,5 +104,10 @@ describe("Ablauf", () => {
     expect(pruefeWert("dringlichkeit", "Das ist ein Notfall")).toEqual({ ok: true, wert: "notfall" });
     expect(anweisung(s, { feld: "dringlichkeit", ergebnis: { ok: true, wert: "notfall" } })).toStartWith(NOTFALL);
     expect(pruefeWert("dringlichkeit", "nicht so dringend, morgen reicht")).toEqual({ ok: true, wert: "normal" });
+    // schon im Anliegen erkannt, nicht erst bei der letzten Frage
+    const gas: Stand = { name: "Max Muster", anliegen: "Bei uns riecht es nach Gas." };
+    expect(anweisung(gas, { feld: "anliegen", ergebnis: { ok: true, wert: gas.anliegen! } })).toStartWith(NOTFALL);
+    const wartung: Stand = { name: "Max Muster", anliegen: "Wartung der Heizung." };
+    expect(anweisung(wartung, { feld: "anliegen", ergebnis: { ok: true, wert: wartung.anliegen! } })).not.toContain("eins eins zwei");
   });
 });

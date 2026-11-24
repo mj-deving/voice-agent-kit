@@ -6,6 +6,7 @@ import { webhookAusgang, type Ausgang } from "./weiterleitung";
 const k = konfiguration(process.env);
 const ausgaenge: Ausgang[] = k.weiterleitungUrl ? [webhookAusgang(k.weiterleitungUrl)] : [];
 if (!ausgaenge.length) console.error("WEITERLEITUNG_URL fehlt: Nachrichten werden nirgends hin weitergeleitet.");
+if (!k.controlToken) console.error("CONTROL_TOKEN fehlt: Die Live-Control-URL verlangt Authentifizierung, der Server kann nicht auflegen.");
 
 // G21, zweites Netz: ein verlorenes Promise loggt, statt den Prozess samt aller laufenden Gespräche zu beenden.
 process.on("unhandledRejection", (e) => console.error(`unhandledRejection: ${(e as Error)?.message ?? e}`));
