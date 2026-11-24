@@ -151,6 +151,8 @@ Alle 44 stehen mit Ursache und Regel in [kit/gotchas.md](kit/gotchas.md). G1 bis
 
 - Die Wartezeiten sind an einem anderen deutschen Telefon-Agenten gemessen. Für einen Anrufbeantworter sind sie ein Startpunkt; die 2 Sekunden nach Nummernfragen sind unbelegt.
 
+- Das Gesprächsmodell `gpt-4.1-mini` ist abgekündigt (OpenAI-API 2027-01-14, Azure 2027-04-14). Ein Nachfolger ist nicht gesetzt, weil keiner gemessen ist; der Weg dahin steht in [kit/regeln.md](kit/regeln.md) unter R6.
+
 - Kosten, DSGVO und Anbindung an eine konkrete Telefonanlage sind offene Prüfpunkte, keine Ergebnisse.
 
 - Feldnamen folgen Vapi. Die Regeln selbst gelten für jede Plattform, die Webhooks oder Tool-Aufrufe zwischen den Turns erlaubt.

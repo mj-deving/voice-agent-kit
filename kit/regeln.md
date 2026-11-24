@@ -53,6 +53,8 @@ Schwellen und Zählregeln werden vor der Messung gesetzt. Eine Neu-Setzung danac
 
 „Neuer“ heißt nicht „besser“. Ein Modellwechsel braucht ganze Gespräche mit allen Pflichtfragen, keine übereifrigen Tool-Aufrufe, keine Einwürfe und eine nicht schlechtere Latenz. Nach jedem Wechsel alle modellabhängigen Werte neu messen (Wartezeiten, Prompt-Fixes, Replays). [MED]
 
+Eine Abkündigung ändert daran nichts. Steht ein Abschaltdatum fest, wird der Nachfolger vorher mit dem Messverfahren des Kits gewählt: Kandidaten im Replay ([replay.md](replay.md)) gegen das alte Modell als Kontrollarm, Schwellen vor der Messung gesetzt (R5), danach das Gate oben an ganzen Gesprächen. Bis ein Kandidat das Gate besteht, bleibt das abgekündigte Modell gesetzt; der Tausch gegen das nächstneuere Modell ohne Messung ist kein Ersatz. Der Referenz-Agent steht genau so da: gpt-4.1-mini ist abgekündigt, ein Nachfolger ist nicht gemessen und deshalb nicht gesetzt (Stand 2026-11). [MED]
+
 ## R7 · Notfälle gehören nicht auf einen Anrufbeantworter
 
 Ein Anrufbeantworter, der einen Notfall hört, verweist sofort auf die 112 und nimmt das Anliegen trotzdem weiter auf. Die Erkennung steht im Server (`agent/src/ablauf.ts`): eine Wortliste über Anliegen und Dringlichkeit, kein Klassifikator. Den Hinweis spricht das Modell auf Anweisung des Servers; ob es ihn wörtlich spricht, prüft der Server nicht. [LOW, eigene Ableitung, unbelegt]

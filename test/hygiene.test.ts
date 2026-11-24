@@ -17,7 +17,8 @@ const lies = (f: string) => readFileSync(join(ROOT, f), "utf8");
 
 // Generische Muster gelten für jeden. Die Sperrliste mit Namen liegt bewusst
 // außerhalb des Repos, damit das Repo die Namen nicht selbst enthält.
-const GENERISCH = [/\/Users\//, /\.claude\b/, /LIFEOS/, /\.beads\b/, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i];
+const GENERISCH = [/\/Users\//, /(^|\W)\.claude\b/, // Pfad wie ~/.claude, nicht die Domain platform.claude.com
+   /LIFEOS/, /\.beads\b/, /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i];
 const sperrDatei = process.env.VOICE_KIT_SPERRLISTE ?? join(homedir(), ".config/voice-agent-kit/sperrliste.txt");
 const sperrWorte = existsSync(sperrDatei)
   ? readFileSync(sperrDatei, "utf8").split("\n").map((z) => z.trim().toLowerCase()).filter(Boolean)

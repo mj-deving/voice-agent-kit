@@ -36,6 +36,7 @@ export function buildAssistant(o: Optionen) {
     firstMessageMode: "assistant-speaks-first",
     model: {
       provider: "openai",
+      // Abgekündigt: OpenAI-API 2027-01-14, Azure 2027-04-14. Nachfolger nur über kit/regeln.md R6 wählen, nicht ungemessen tauschen.
       model: "gpt-4.1-mini",
       temperature: 0.2,
       maxTokens: 250,

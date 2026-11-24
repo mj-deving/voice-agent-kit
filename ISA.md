@@ -170,6 +170,7 @@ Das Ursprungsprojekt enthält 76 belegte Fehler und Praxiszeilen, ist aber nicht
 
 - 2026-11-24 · Veröffentlichungsvorbereitung: Lizenz MIT. Das ISA wird bereinigt mitveröffentlicht, weil es die Arbeitsweise belegt. Die Historie bleibt erhalten; eine Export-Kopie schreibt nur die Autor-Mail auf die GitHub-noreply-Adresse um. Das Arbeits-Repo bleibt unverändert und lokal.
 - 2026-11-24 · Die Art des Ursprungsprojekts bleibt ungenannt: Es heißt überall nur „ein eigener deutscher Telefon-Agent“. Das Wort steht auf der Sperrliste außerhalb des Repos, damit ISC-4 einen Rückfall fängt.
+- 2026-11-24 · gpt-4.1-mini ist abgekündigt (OpenAI-API 2027-01-14, Azure 2027-04-14). Markiert in stellschrauben.md, assistant.ts und README; R6 sagt jetzt ausdrücklich, dass ein Nachfolger nur über Replay mit Kontrollarm und Gate gewählt wird. Der Wert bleibt gesetzt, weil kein Nachfolger gemessen ist. Neu: Abschnitt EU-Betrieb in einsatz.md, je Glied der Kette Option, Grenze und Quelle, Unbelegtes markiert. Der Hygiene-Test fing dabei die Domain `platform.claude.com` als Pfad; das Muster prüft jetzt nur noch Pfade (Home-Pfad und relativer Pfad bleiben rot, die Domain grün; Probe). `bun test` 61 pass.
 
 ## Articulation Log
 
